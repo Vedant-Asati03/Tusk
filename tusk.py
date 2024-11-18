@@ -11,6 +11,8 @@ import sys
 
 sys.path.append("D:/textual-vim-extended")
 from vim_bindings import HandleVimBindings
+from command_palette import TuskCommandPalette
+from auto_save import AutoSave
 
 
 class AutoComplete(TextArea):
@@ -47,6 +49,8 @@ class TextAreaExtended(AutoComplete, HandleVimBindings):
 class Tusk(App):
     BINDINGS = [
         Binding("ctrl+p", "command_palette", "Command palette"),
+        Binding("ctrl+s", "save", "Save"),
+        Binding("ctrl+@", "toggle_preview", "Toggle Preview"),
     ]
 
     CSS = """
@@ -79,7 +83,8 @@ Screen {
 
     def __init__(self, markdown: str = "", autosave_path: str = "autosave.md") -> None:
         self.markdown = markdown
-        self.autosave_path = autosave_path
+        self.autosaver = AutoSave(autosave_path)
+        self.show_preview = True
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -92,7 +97,10 @@ Screen {
 
     def on_mount(self) -> None:
         """Start the autosave timer when the app is mounted."""
-        self.set_interval(self.AUTOSAVE_INTERVAL, self.autosave_content)
+        self.set_interval(self.AUTOSAVE_INTERVAL, self._do_autosave)
+        # Load last save
+        input_box = self.query_one("#input-box", TextArea)
+        input_box.text = self.autosaver.load_last_save()
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         """Handle live updating of the markdown preview as the input changes."""
@@ -100,17 +108,31 @@ Screen {
         preview_box = self.query_one("#preview-box", Markdown)
         preview_box.update(input_content)
 
-    def autosave_content(self) -> None:
-        """Save the content of the input box to a file."""
+    def _do_autosave(self) -> None:
+        """Perform autosave operation."""
         input_box = self.query_one("#input-box", TextArea)
-        content = input_box.text
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.autosaver.autosave_content(input_box.text)
 
-        with open(self.autosave_path, "w", encoding="utf-8") as file:
-            file.write(f"<!-- Autosaved at {timestamp} -->\n")
-            file.write(content)
+    async def action_command_palette(self) -> None:
+        """Show the command palette."""
+        await self.push_screen(TuskCommandPalette())
 
-        self.log(f"Autosaved content at {timestamp} to {self.autosave_path}")
+    def action_save(self) -> None:
+        """Manually trigger a save."""
+        self._do_autosave()
+
+    def action_toggle_preview(self) -> None:
+        """Toggle the preview pane."""
+        preview = self.query_one("#preview-box")
+        input_box = self.query_one("#input-box")
+        
+        self.show_preview = not self.show_preview
+        if self.show_preview:
+            preview.styles.width = "50%"
+            input_box.styles.width = "50%"
+        else:
+            preview.styles.width = "0%"
+            input_box.styles.width = "100%"
 
 
 if __name__ == "__main__":
