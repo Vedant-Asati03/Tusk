@@ -1,3 +1,6 @@
+<!-- Autosaved at 2024-11-18 17:48:43 -->
+<!-- Autosaved at 2024-11-18 17:48:31 -->
+<!-- Autosaved at 2024-11-18 17:48:28 -->
 <!-- Autosaved at 2024-11-18 12:19:04 -->
 <!-- Autosaved at 2024-11-18 00:40:13 -->
 <!-- Autosaved at 2024-11-18 00:39:46 -->
@@ -13,7 +16,7 @@
 Terminal Chess is a text-based chess game implemented in Python. It features a Text User Interface (TUI) using the
 Textual framework, allowing for mouse interactions and a visually appealing chessboard display.
 
-## Features
+
 
 - **Textual TUI**: Modern TUI framework with mouse support.
 - **Rich Display**: Utilizes the Rich library for enhanced text formatting and table display.
