@@ -1,4 +1,4 @@
-import os
+# import os
 from datetime import datetime
 from textual import events
 from textual.binding import Binding
@@ -7,10 +7,10 @@ from textual.containers import Horizontal
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea, Markdown
 
-import sys
+# import sys
+# sys.path.append(os.path.expanduser("/code:/textual-vim-extended/"))
 
-sys.path.append("D:/textual-vim-extended")
-from vim_bindings import HandleVimBindings
+# from vim_bindings import HandleVimBindings
 from command_palette import TuskCommandPalette
 from auto_save import AutoSave
 
@@ -42,7 +42,7 @@ class AutoComplete(TextArea):
             event.prevent_default()
 
 
-class TextAreaExtended(AutoComplete, HandleVimBindings):
+class TextAreaExtended(AutoComplete):
     pass
 
 
@@ -51,6 +51,8 @@ class Tusk(App):
         Binding("ctrl+p", "command_palette", "Command palette"),
         Binding("ctrl+s", "save", "Save"),
         Binding("ctrl+@", "toggle_preview", "Toggle Preview"),
+        Binding("ctrl+l", "widen_input", "Widen input"),     # new binding
+        Binding("ctrl+q", "shrink_input", "Shrink input"),   # new binding
     ]
 
     CSS = """
@@ -85,6 +87,7 @@ Screen {
         self.markdown = markdown
         self.autosaver = AutoSave(autosave_path)
         self.show_preview = True
+        self.input_width = 50  # Track input width percentage
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -128,12 +131,29 @@ Screen {
         
         self.show_preview = not self.show_preview
         if self.show_preview:
-            preview.styles.width = "50%"
-            input_box.styles.width = "50%"
+            preview.styles.width = f"{100 - self.input_width}%"
+            input_box.styles.width = f"{self.input_width}%"
         else:
             preview.styles.width = "0%"
             input_box.styles.width = "100%"
 
+    def action_widen_input(self) -> None:
+        """Increase input box width."""
+        if self.input_width < 100:  # Max width limit
+            self.input_width += 1  # Smaller step size
+            input_box = self.query_one("#input-box")
+            preview_box = self.query_one("#preview-box")
+            input_box.styles.width = f"{self.input_width}%"
+            preview_box.styles.width = f"{100 - self.input_width}%"
+
+    def action_shrink_input(self) -> None:
+        """Decrease input box width."""
+        if self.input_width > 0:  # Min width limit
+            self.input_width -= 1  # Smaller step size
+            input_box = self.query_one("#input-box")
+            preview_box = self.query_one("#preview-box")
+            input_box.styles.width = f"{self.input_width}%"
+            preview_box.styles.width = f"{100 - self.input_width}%"
 
 if __name__ == "__main__":
     Tusk().run()

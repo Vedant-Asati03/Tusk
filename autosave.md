@@ -1,3 +1,42 @@
+<!-- Autosaved at 2024-11-18 19:54:42 -->
+<!-- Autosaved at 2024-11-18 19:54:03 -->
+<!-- Autosaved at 2024-11-18 19:49:46 -->
+<!-- Autosaved at 2024-11-18 19:47:44 -->
+<!-- Autosaved at 2024-11-18 19:47:15 -->
+<!-- Autosaved at 2024-11-18 19:42:03 -->
+<!-- Autosaved at 2024-11-18 19:41:00 -->
+<!-- Autosaved at 2024-11-18 19:40:15 -->
+<!-- Autosaved at 2024-11-18 19:39:32 -->
+<!-- Autosaved at 2024-11-18 19:39:00 -->
+<!-- Autosaved at 2024-11-18 19:38:33 -->
+<!-- Autosaved at 2024-11-18 19:38:27 -->
+<!-- Autosaved at 2024-11-18 19:35:51 -->
+<!-- Autosaved at 2024-11-18 19:35:21 -->
+<!-- Autosaved at 2024-11-18 19:35:05 -->
+<!-- Autosaved at 2024-11-18 19:34:51 -->
+<!-- Autosaved at 2024-11-18 19:28:46 -->
+<!-- Autosaved at 2024-11-18 19:15:07 -->
+<!-- Autosaved at 2024-11-18 19:12:29 -->
+<!-- Autosaved at 2024-11-18 19:06:29 -->
+<!-- Autosaved at 2024-11-18 19:05:59 -->
+<!-- Autosaved at 2024-11-18 19:03:56 -->
+<!-- Autosaved at 2024-11-18 19:03:24 -->
+<!-- Autosaved at 2024-11-18 19:02:04 -->
+<!-- Autosaved at 2024-11-18 19:01:56 -->
+<!-- Autosaved at 2024-11-18 18:59:03 -->
+<!-- Autosaved at 2024-11-18 18:58:31 -->
+<!-- Autosaved at 2024-11-18 18:56:03 -->
+<!-- Autosaved at 2024-11-18 18:55:32 -->
+<!-- Autosaved at 2024-11-18 18:51:56 -->
+<!-- Autosaved at 2024-11-18 18:51:45 -->
+<!-- Autosaved at 2024-11-18 18:50:50 -->
+<!-- Autosaved at 2024-11-18 18:48:53 -->
+<!-- Autosaved at 2024-11-18 18:48:47 -->
+<!-- Autosaved at 2024-11-18 18:48:08 -->
+<!-- Autosaved at 2024-11-18 18:47:13 -->
+<!-- Autosaved at 2024-11-18 18:46:47 -->
+<!-- Autosaved at 2024-11-18 18:46:02 -->
+<!-- Autosaved at 2024-11-18 18:40:34 -->
 <!-- Autosaved at 2024-11-18 17:48:43 -->
 <!-- Autosaved at 2024-11-18 17:48:31 -->
 <!-- Autosaved at 2024-11-18 17:48:28 -->
@@ -11,6 +50,9 @@
 <!-- Autosaved at 2024-11-18 00:29:10 -->
 <!-- Autosaved at 2024-11-18 00:27:49 -->
 <!-- Autosaved at 2024-11-03 00:46:27 -->
+
+
+
 # Terminal Chess
 
 Terminal Chess is a text-based chess game implemented in Python. It features a Text User Interface (TUI) using the
