@@ -19,6 +19,8 @@ class TuskCommandPalette(CommandPalette):
         "insert_link": "Insert Link",
         "save_file": "Save File",
         "toggle_preview": "Toggle Preview",
+        "open_file": "Open File",  # New command
+        "new_file": "New File",    # New command
     }
 
     def get_commands(self) -> Iterable[Command]:

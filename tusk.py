@@ -3,9 +3,10 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea, Markdown
+from pathlib import Path
+import sys
 
 from command_palette import TuskCommandPalette
-from auto_save import AutoSave
 
 
 class AutoComplete(TextArea):
@@ -93,11 +94,11 @@ Screen {
 }
 """
 
-    AUTOSAVE_INTERVAL = 0.8
+    SAVE_INTERVAL = 0.8
 
-    def __init__(self, markdown: str = "", autosave_path: str = "autosave.md") -> None:
+    def __init__(self, markdown: str = "", file_path: str | None = None) -> None:
         self.markdown = markdown
-        self.autosaver = AutoSave(autosave_path)
+        self.file_path = Path(file_path) if file_path else None
         self.show_preview = True
         self.input_width = 50
         super().__init__()
@@ -110,13 +111,14 @@ Screen {
         yield Horizontal(input_box, preview_box)
 
     def on_mount(self) -> None:
-        """Initialize the application after mounting.
-        
-        Sets up auto-save timer and loads the last saved content.
-        """
-        self.set_interval(self.AUTOSAVE_INTERVAL, self._do_autosave)
-        input_box = self.query_one("#input-box", TextArea)
-        input_box.text = self.autosaver.load_last_save()
+        """Initialize the application after mounting."""
+        if self.file_path and self.file_path.is_file():
+            self.set_interval(self.SAVE_INTERVAL, self._do_save)
+            input_box = self.query_one("#input-box", TextArea)
+            try:
+                input_box.text = self.file_path.read_text(encoding='utf-8')
+            except Exception as e:
+                input_box.text = f"Error loading file: {str(e)}"
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         """Update the preview pane when text content changes.
@@ -128,15 +130,21 @@ Screen {
         preview_box = self.query_one("#preview-box", Markdown)
         preview_box.update(input_content)
 
-    def _do_autosave(self) -> None:
-        input_box = self.query_one("#input-box", TextArea)
-        self.autosaver.autosave_content(input_box.text)
+    def _do_save(self) -> None:
+        """Save content directly to the opened file."""
+        if self.file_path:
+            input_box = self.query_one("#input-box", TextArea)
+            try:
+                self.file_path.write_text(input_box.text, encoding='utf-8')
+            except Exception as e:
+                print(f"Error saving file: {str(e)}", file=sys.stderr)
 
     async def action_command_palette(self) -> None:
         await self.push_screen(TuskCommandPalette())
 
     def action_save(self) -> None:
-        self._do_autosave()
+        """Manual save action."""
+        self._do_save()
 
     def action_toggle_preview(self) -> None:
         """Toggle the visibility of the preview pane.
@@ -172,5 +180,8 @@ Screen {
             preview_box.styles.width = f"{100 - self.input_width}%"
 
 
+# Modify the main block to accept a file path argument
 if __name__ == "__main__":
-    Tusk().run()
+    file_path = sys.argv[1] if len(sys.argv) > 1 else None
+    app = Tusk(file_path=file_path)
+    app.run()
