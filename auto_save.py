@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from pathlib import Path
 
 class AutoSave:
     """Handles automatic saving of editor content to prevent data loss.
@@ -13,6 +14,16 @@ class AutoSave:
 
     def __init__(self, autosave_path: str = "auto_save.md") -> None:
         self.autosave_path = autosave_path
+        
+        log_dir = Path.home() / ".tusk" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        log_file = log_dir / "tusk.log"
+        logging.basicConfig(
+            filename=str(log_file),
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
         self.logger = logging.getLogger("tusk")
 
     def autosave_content(self, content: str) -> None:
