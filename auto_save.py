@@ -2,12 +2,28 @@ from datetime import datetime
 import logging
 
 class AutoSave:
+    """Handles automatic saving of editor content to prevent data loss.
+    
+    Features:
+    - Periodic auto-saving
+    - Timestamp recording
+    - Error logging
+    - Last save recovery
+    """
+
     def __init__(self, autosave_path: str = "auto_save.md") -> None:
         self.autosave_path = autosave_path
         self.logger = logging.getLogger("tusk")
 
     def autosave_content(self, content: str) -> None:
-        """Save the content of the input box to a file."""
+        """Save the current editor content with timestamp.
+        
+        Args:
+            content (str): The text content to be saved.
+            
+        The save operation includes a timestamp comment and logs the save event.
+        Errors during save are logged but don't interrupt the application.
+        """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
@@ -19,7 +35,11 @@ class AutoSave:
             self.logger.error(f"Failed to autosave: {str(e)}")
 
     def load_last_save(self) -> str:
-        """Load the last saved content."""
+        """Retrieve the most recently saved content.
+        
+        Returns:
+            str: The content of the last save file or empty string if no save exists.
+        """
         try:
             with open(self.autosave_path, "r", encoding="utf-8") as file:
                 return file.read()
