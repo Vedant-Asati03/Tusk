@@ -87,9 +87,7 @@ Screen {
     width: 50%;
     height: 104%;
     border: blank;
-    background: #0C0C0C;
     color: #F1F1F1;
-    scrollbar-color: #C7C8CC;
     scrollbar-size-vertical: 1;
 }
 """
@@ -112,6 +110,8 @@ Screen {
 
     def on_mount(self) -> None:
         """Initialize the application after mounting."""
+        self.theme = "tokyo-night"
+
         if self.file_path and self.file_path.is_file():
             self.set_interval(self.SAVE_INTERVAL, self._do_save)
             input_box = self.query_one("#input-box", TextArea)
