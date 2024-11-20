@@ -6,8 +6,7 @@ from textual.widgets import TextArea, Markdown
 from pathlib import Path
 import sys
 
-from command_palette import TuskCommandPalette
-
+from auto_save import AutoSave  # Add this import
 
 class AutoComplete(TextArea):
     """A TextArea widget that automatically completes brackets and markdown syntax.
@@ -64,8 +63,8 @@ class Tusk(App):
         Binding("ctrl+p", "command_palette", "Command palette"),
         Binding("ctrl+s", "save", "Save"),
         Binding("ctrl+@", "toggle_preview", "Toggle Preview"),
-        Binding("ctrl+l", "widen_input", "Widen input"),
-        Binding("ctrl+q", "shrink_input", "Shrink input"),
+        Binding("ctrl+l", "expand_input_box", "Widen input"),
+        Binding("ctrl+q", "shrink_input_box", "Shrink input"),
     ]
 
     CSS = """
@@ -99,6 +98,7 @@ Screen {
         self.file_path = Path(file_path) if file_path else None
         self.show_preview = True
         self.input_width = 50
+        self.auto_save = AutoSave(self.file_path)  # This is the only saving mechanism we'll use
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -113,10 +113,9 @@ Screen {
         self.theme = "tokyo-night"
 
         if self.file_path and self.file_path.is_file():
-            self.set_interval(self.SAVE_INTERVAL, self._do_save)
             input_box = self.query_one("#input-box", TextArea)
             try:
-                input_box.text = self.file_path.read_text(encoding='utf-8')
+                input_box.text = self.auto_save.load_last_save()  # Use AutoSave's load method
             except Exception as e:
                 input_box.text = f"Error loading file: {str(e)}"
 
@@ -129,18 +128,16 @@ Screen {
         input_content = event.control.text
         preview_box = self.query_one("#preview-box", Markdown)
         preview_box.update(input_content)
+        # Add autosave on content change
+        self.auto_save.autosave_content(input_content)
 
     def _do_save(self) -> None:
         """Save content directly to the opened file."""
-        if self.file_path:
-            input_box = self.query_one("#input-box", TextArea)
-            try:
-                self.file_path.write_text(input_box.text, encoding='utf-8')
-            except Exception as e:
-                print(f"Error saving file: {str(e)}", file=sys.stderr)
+        input_box = self.query_one("#input-box", TextArea)
+        self.auto_save.autosave_content(input_box.text)  # Use AutoSave for saving
 
-    async def action_command_palette(self) -> None:
-        await self.push_screen(TuskCommandPalette())
+    # async def action_command_palette(self) -> None:
+    #     await self.push_screen(TuskCommandPalette())
 
     def action_save(self) -> None:
         """Manual save action."""
@@ -163,7 +160,7 @@ Screen {
             preview.styles.width = "0%"
             input_box.styles.width = "100%"
 
-    def action_widen_input(self) -> None:
+    def action_expand_input_box(self) -> None:
         if self.input_width < 100:
             self.input_width += 1
             input_box = self.query_one("#input-box")
@@ -171,7 +168,7 @@ Screen {
             input_box.styles.width = f"{self.input_width}%"
             preview_box.styles.width = f"{100 - self.input_width}%"
 
-    def action_shrink_input(self) -> None:
+    def action_shrink_input_box(self) -> None:
         if self.input_width > 0:
             self.input_width -= 1
             input_box = self.query_one("#input-box")
@@ -180,8 +177,7 @@ Screen {
             preview_box.styles.width = f"{100 - self.input_width}%"
 
 
-# Modify the main block to accept a file path argument
-if __name__ == "__main__":
+if __name__  == "__main__":
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
     app = Tusk(file_path=file_path)
     app.run()
