@@ -8,6 +8,28 @@ A modern terminal-based Markdown editor with real-time preview and Git integrati
 
 ![](assets/tusk-logo.png)
 
+# Table of Contents
+
+* [Tusk](#tusk)
+
+  * [Features](#features)
+
+  * [Installation](#installation)
+
+    * [Via pip](#via-pip)
+
+    * [From source](#from-source)
+
+  * [Usage](#usage)
+
+    * [Key Bindings](#key-bindings)
+
+  * [Contributing](#contributing)
+
+  * [License](#license)
+
+
+
 ## Features
 
 - Real-time Markdown preview
