@@ -45,7 +45,7 @@ A modern terminal-based Markdown editor with real-time preview and Git integrati
 
 ### Via pip
 ```bash
-pip install tusk
+pip install tusk-editor
 ```
 
 ### From source
@@ -66,10 +66,10 @@ tusk filename.md
 ### Key Bindings
 
 - `Ctrl+S`: Save file
-- `Ctrl+Q`: Quit
 - `Ctrl+P`: Open command palette
 - `Ctrl+B`: Toggle sidebar
-- `Ctrl+/`: Toggle preview
+- `Ctrl+L`: Expand input-box
+- `Ctrl+Q`: Shrink input-box
 
 ## Contributing
 Feel free to contribute by forking the repo and submitting a pull request! 🚀
