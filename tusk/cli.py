@@ -15,7 +15,7 @@ def main():
     parser.add_argument(
         "--version", 
         action="version", 
-        version="%(prog)s 0.1.0"
+        version="tusk-editor %(prog)s 0.1.0"  # Updated name
     )
     parser.add_argument(
         "--new", 

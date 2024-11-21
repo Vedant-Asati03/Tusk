@@ -6,6 +6,8 @@ A modern terminal-based Markdown editor with real-time preview and Git integrati
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+![](assets/tusk-logo.png)
+
 ## Features
 
 - Real-time Markdown preview
@@ -21,7 +23,7 @@ A modern terminal-based Markdown editor with real-time preview and Git integrati
 
 ### Via pip
 ```bash
-pip install tusk-editor
+pip install tusk
 ```
 
 ### From source
