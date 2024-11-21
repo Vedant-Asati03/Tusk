@@ -2,11 +2,16 @@ from textual import events
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.app import App, ComposeResult
-from textual.widgets import TextArea, Markdown
+from textual.widgets import TextArea, Markdown, Static
 from pathlib import Path
 import sys
+from textual.command import Hit, Hits, Provider
+from functools import partial
+import markdown
+import pypandoc
+import re
 
-from auto_save import AutoSave  # Add this import
+from auto_save import AutoSave
 
 class AutoComplete(TextArea):
     """A TextArea widget that automatically completes brackets and markdown syntax.
@@ -48,16 +53,45 @@ class TextAreaExtended(AutoComplete):
     pass
 
 
+class ThemeCommand(Provider):
+    """Provider for theme switching commands"""
+    THEMES = [
+        "dracula", "monokai", "github-dark", "one-dark", 
+        "solarized-dark", "solarized-light", "nord"
+    ]
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        for theme in self.THEMES:
+            command = f"theme {theme}"
+            score = matcher.match(command)
+            if score > 0:
+                yield Hit(
+                    score,
+                    matcher.highlight(command),
+                    partial(self.app.change_theme, theme),
+                    help=f"Switch to {theme} theme"
+                )
+
+class ExportCommand(Provider):
+    """Provider for export commands"""
+    FORMATS = ["html", "pdf", "docx"]
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        for fmt in self.FORMATS:
+            command = f"export {fmt}"
+            score = matcher.match(command)
+            if score > 0:
+                yield Hit(
+                    score,
+                    matcher.highlight(command),
+                    partial(self.app.export_document, fmt),
+                    help=f"Export as {fmt}"
+                )
+
 class Tusk(App):
-    """A markdown editor application with live preview functionality.
-    
-    Features:
-    - Split view with editor and preview pane
-    - Auto-saving capability
-    - Command palette for quick actions
-    - Adjustable split view width
-    - Vim-like keybindings
-    """
+    COMMANDS = App.COMMANDS | {ThemeCommand, ExportCommand}
 
     BINDINGS = [
         Binding("ctrl+p", "command_palette", "Command palette"),
@@ -65,31 +99,37 @@ class Tusk(App):
         Binding("ctrl+@", "toggle_preview", "Toggle Preview"),
         Binding("ctrl+l", "expand_input_box", "Widen input"),
         Binding("ctrl+q", "shrink_input_box", "Shrink input"),
+        Binding("ctrl+b", "insert_toc", "Insert TOC"),
     ]
 
     CSS = """
-Screen {
-    layout: horizontal;
-}
+    Screen {
+        layout: horizontal;
+    }
 
+    #input-box {
+        width: 50%;
+        height: 100%;
+        border: blank;
+        scrollbar-color: #C7C8CC;
+        scrollbar-size-vertical: 1;
+    }
 
-#input-box {
-    width: 50%;
-    height: 100%;
-    border: blank;
-    scrollbar-color: #C7C8CC;
-    scrollbar-size-vertical: 1;
+    #preview-box {
+        width: 50%;
+        height: 104%;
+        border: blank;
+        color: #F1F1F1;
+        scrollbar-size-vertical: 1;
+    }
 
-}
-
-#preview-box {
-    width: 50%;
-    height: 104%;
-    border: blank;
-    color: #F1F1F1;
-    scrollbar-size-vertical: 1;
-}
-"""
+    #status-bar {
+        dock: bottom;
+        height: 1;
+        background: $panel;
+        color: $text;
+    }
+    """
 
     SAVE_INTERVAL = 0.8
 
@@ -98,7 +138,7 @@ Screen {
         self.file_path = Path(file_path) if file_path else None
         self.show_preview = True
         self.input_width = 50
-        self.auto_save = AutoSave(self.file_path)  # This is the only saving mechanism we'll use
+        self.auto_save = AutoSave(self.file_path)
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -107,6 +147,7 @@ Screen {
         )
         preview_box = Markdown(self.markdown, id="preview-box")
         yield Horizontal(input_box, preview_box)
+        yield Static("Words: 0 | Chars: 0", id="status-bar")
 
     def on_mount(self) -> None:
         """Initialize the application after mounting."""
@@ -130,14 +171,15 @@ Screen {
         preview_box.update(input_content)
         # Add autosave on content change
         self.auto_save.autosave_content(input_content)
+        # Add word count update
+        words = len(input_content.split())
+        chars = len(input_content)
+        self.query_one("#status-bar").update(f"Words: {words} | Chars: {chars}")
 
     def _do_save(self) -> None:
         """Save content directly to the opened file."""
         input_box = self.query_one("#input-box", TextArea)
         self.auto_save.autosave_content(input_box.text)  # Use AutoSave for saving
-
-    # async def action_command_palette(self) -> None:
-    #     await self.push_screen(TuskCommandPalette())
 
     def action_save(self) -> None:
         """Manual save action."""
@@ -176,8 +218,51 @@ Screen {
             input_box.styles.width = f"{self.input_width}%"
             preview_box.styles.width = f"{100 - self.input_width}%"
 
+    def action_insert_toc(self) -> None:
+        """Generate and insert table of contents."""
+        input_box = self.query_one("#input-box", TextArea)
+        content = input_box.text
+        headers = re.findall(r'^(#{1,6})\s+(.+)$', content, re.MULTILINE)
+        
+        toc = ["# Table of Contents\n"]
+        for hashes, title in headers:
+            level = len(hashes) - 1
+            link = title.lower().replace(' ', '-')
+            toc.append(f"{'  ' * level}* [{title}](#{link})\n")
+        
+        input_box.insert("\n".join(toc) + "\n")
 
-if __name__  == "__main__":
+    def change_theme(self, theme: str) -> None:
+        """Switch editor theme."""
+        input_box = self.query_one("#input-box", TextArea)
+        input_box.theme = theme
+
+    def export_document(self, format: str) -> None:
+        """Export document to different formats."""
+        if not self.file_path:
+            self.notify("Please save the file first", severity="error")
+            return
+
+        content = self.query_one("#input-box").text
+        output_file = self.file_path.with_suffix(f".{format}")
+        
+        try:
+            if format == "html":
+                html = markdown.markdown(content)
+                output_file.write_text(html)
+            else:
+                pypandoc.convert_text(
+                    content,
+                    format,
+                    format='md',
+                    outputfile=str(output_file)
+                )
+            self.notify(f"Exported to {output_file}")
+        except Exception as e:
+            self.notify(f"Export failed: {str(e)}", severity="error")
+
+
+if __name__ == "__main__":
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
     app = Tusk(file_path=file_path)
     app.run()
