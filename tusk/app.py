@@ -156,7 +156,7 @@ class Tusk(App):
         if self.file_path and self.file_path.is_file():
             input_box = self.query_one("#input-box", TextArea)
             try:
-                input_box.text = self.auto_save.load_last_save()  # Use AutoSave's load method
+                input_box.text = self.auto_save.load_last_save()
             except Exception as e:
                 input_box.text = f"Error loading file: {str(e)}"
 
@@ -179,7 +179,7 @@ class Tusk(App):
     def _do_save(self) -> None:
         """Save content directly to the opened file."""
         input_box = self.query_one("#input-box", TextArea)
-        self.auto_save.autosave_content(input_box.text)  # Use AutoSave for saving
+        self.auto_save.autosave_content(input_box.text)
 
     def action_save(self) -> None:
         """Manual save action."""
