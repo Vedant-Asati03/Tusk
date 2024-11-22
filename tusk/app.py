@@ -259,7 +259,7 @@ class Tusk(App):
                 )
             self.notify(f"Exported to {output_file}")
         except Exception as e:
-            self.notify(f"Export failed: {str(e)}", severity="error")
+            self.notify(f"Export failed: {str(e)}", title="Export Failed!", severity="error", timeout=4)
 
 
 if __name__ == "__main__":
