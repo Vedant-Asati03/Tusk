@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from datetime import datetime
 
 class AutoSave:
     """Handles automatic saving of editor content to prevent data loss."""
@@ -18,6 +19,7 @@ class AutoSave:
         )
         self.logger = logging.getLogger("tusk")
         self.file_path = file_path
+        self.last_save_time = None
         self.logger.info("AutoSave initialized")
 
     def autosave_content(self, content: str) -> None:
@@ -27,6 +29,7 @@ class AutoSave:
             
         try:
             self.file_path.write_text(content, encoding='utf-8')
+            self.last_save_time = datetime.now()
             self.logger.info(f"Autosaved content to {self.file_path}")
         except Exception as e:
             self.logger.error(f"Failed to autosave: {str(e)}")
@@ -40,3 +43,8 @@ class AutoSave:
             return self.file_path.read_text(encoding='utf-8')
         except FileNotFoundError:
             return ""
+
+    def get_last_save_time(self) -> str:
+        if self.last_save_time:
+            return self.last_save_time.strftime("%H:%M:%S")
+        return "Never"

@@ -13,16 +13,17 @@ import re
 
 from tusk.auto_save import AutoSave
 
+
 class AutoComplete(TextArea):
     """A TextArea widget that automatically completes brackets and markdown syntax.
-    
+
     This class extends TextArea to provide auto-completion for common programming
     and markdown syntax elements like brackets, quotes, and markdown formatting symbols.
     """
 
     def _on_key(self, event: events.Key) -> None:
         """Handle key events for auto-completion of brackets and markdown syntax.
-        
+
         Args:
             event (events.Key): The key event containing the character pressed.
         """
@@ -55,9 +56,15 @@ class TextAreaExtended(AutoComplete):
 
 class ThemeCommand(Provider):
     """Provider for theme switching commands"""
+
     THEMES = [
-        "dracula", "monokai", "github-dark", "one-dark", 
-        "solarized-dark", "solarized-light", "nord"
+        "dracula",
+        "monokai",
+        "github-dark",
+        "one-dark",
+        "solarized-dark",
+        "solarized-light",
+        "nord",
     ]
 
     async def search(self, query: str) -> Hits:
@@ -70,11 +77,13 @@ class ThemeCommand(Provider):
                     score,
                     matcher.highlight(command),
                     partial(self.app.change_theme, theme),
-                    help=f"Switch to {theme} theme"
+                    help=f"Switch to {theme} theme",
                 )
+
 
 class ExportCommand(Provider):
     """Provider for export commands"""
+
     FORMATS = ["html", "pdf", "docx"]
 
     async def search(self, query: str) -> Hits:
@@ -87,8 +96,9 @@ class ExportCommand(Provider):
                     score,
                     matcher.highlight(command),
                     partial(self.app.export_document, fmt),
-                    help=f"Export as {fmt}"
+                    help=f"Export as {fmt}",
                 )
+
 
 class Tusk(App):
     COMMANDS = App.COMMANDS | {ThemeCommand, ExportCommand}
@@ -147,12 +157,11 @@ class Tusk(App):
         )
         preview_box = Markdown(self.markdown, id="preview-box")
         yield Horizontal(input_box, preview_box)
-        yield Static("Words: 0 | Chars: 0", id="status-bar")
+        initial_status = f"Words: 0 | Chars: 0 | Theme: dracula | Preview: ON | --autosave-enabled-- | {self.file_path or 'Untitled'}"
+        yield Static(initial_status, id="status-bar")
 
     def on_mount(self) -> None:
         """Initialize the application after mounting."""
-        self.theme = "tokyo-night"
-
         if self.file_path and self.file_path.is_file():
             input_box = self.query_one("#input-box", TextArea)
             try:
@@ -162,19 +171,28 @@ class Tusk(App):
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         """Update the preview pane when text content changes.
-        
+
         Args:
             event (TextArea.Changed): Event containing the updated text content.
         """
         input_content = event.control.text
         preview_box = self.query_one("#preview-box", Markdown)
         preview_box.update(input_content)
-        # Add autosave on content change
         self.auto_save.autosave_content(input_content)
-        # Add word count update
+
         words = len(input_content.split())
         chars = len(input_content)
-        self.query_one("#status-bar").update(f"Words: {words} | Chars: {chars}")
+        last_save = self.auto_save.get_last_save_time()
+
+        status = (
+            f"--last-saved {last_save}-- "
+            f"--words {words}-- "
+            f"--chars {chars}-- "
+            f"--theme:inputbox {self.query_one('#input-box').theme}-- "
+            f"--autosave-enabled-- "
+            f"{self.file_path or 'Untitled'}"
+        )
+        self.query_one("#status-bar").update(status)
 
     def _do_save(self) -> None:
         """Save content directly to the opened file."""
@@ -187,13 +205,13 @@ class Tusk(App):
 
     def action_toggle_preview(self) -> None:
         """Toggle the visibility of the preview pane.
-        
+
         When toggled off, the editor expands to full width.
         When toggled on, returns to split view with previous width ratio.
         """
         preview = self.query_one("#preview-box")
         input_box = self.query_one("#input-box")
-        
+
         self.show_preview = not self.show_preview
         if self.show_preview:
             preview.styles.width = f"{100 - self.input_width}%"
@@ -201,6 +219,9 @@ class Tusk(App):
         else:
             preview.styles.width = "0%"
             input_box.styles.width = "100%"
+
+        # Trigger status bar update
+        self.on_text_area_changed(TextArea.Changed(self.query_one("#input-box")))
 
     def action_expand_input_box(self) -> None:
         if self.input_width < 100:
@@ -222,44 +243,44 @@ class Tusk(App):
         """Generate and insert table of contents."""
         input_box = self.query_one("#input-box", TextArea)
         content = input_box.text
-        headers = re.findall(r'^(#{1,6})\s+(.+)$', content, re.MULTILINE)
-        
+        headers = re.findall(r"^(#{1,6})\s+(.+)$", content, re.MULTILINE)
+
         toc = ["## Table of Contents\n"]
         for hashes, title in headers:
             level = len(hashes) - 1
-            link = title.lower().replace(' ', '-')
+            link = title.lower().replace(" ", "-")
             toc.append(f"{'  ' * level}* [{title}](#{link})\n")
-        
+
         input_box.insert("\n".join(toc) + "\n")
 
     def change_theme(self, theme: str) -> None:
-        """Switch editor theme."""
         input_box = self.query_one("#input-box", TextArea)
         input_box.theme = theme
+        self.on_text_area_changed(TextArea.Changed(input_box))
 
-    def export_document(self, format: str) -> None:
-        """Export document to different formats."""
         if not self.file_path:
             self.notify("Please save the file first", severity="error")
             return
 
         content = self.query_one("#input-box").text
         output_file = self.file_path.with_suffix(f".{format}")
-        
+
         try:
             if format == "html":
                 html = markdown.markdown(content)
                 output_file.write_text(html)
             else:
                 pypandoc.convert_text(
-                    content,
-                    format,
-                    format='md',
-                    outputfile=str(output_file)
+                    content, format, format="md", outputfile=str(output_file)
                 )
             self.notify(f"Exported to {output_file}")
         except Exception as e:
-            self.notify(f"Export failed: {str(e)}", title="Export Failed!", severity="error", timeout=4)
+            self.notify(
+                f"Export failed: {str(e)}",
+                title="Export Failed!",
+                severity="error",
+                timeout=4,
+            )
 
 
 if __name__ == "__main__":
