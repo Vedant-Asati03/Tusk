@@ -13,6 +13,13 @@ import re
 
 from tusk.auto_save import AutoSave
 
+base_directory = Path("D:/")
+vim_bindings_path = base_directory / "textual-vim-extended"
+sys.path.append(str(vim_bindings_path))
+
+from vim_bindings import HandleVimBindings
+
+
 class AutoComplete(TextArea):
     """A TextArea widget that automatically completes brackets and markdown syntax.
     
@@ -49,7 +56,7 @@ class AutoComplete(TextArea):
             event.prevent_default()
 
 
-class TextAreaExtended(AutoComplete):
+class TextAreaExtended(AutoComplete, HandleVimBindings):
     pass
 
 
