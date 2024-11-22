@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "tusk-editor"
+version = "0.1.0"
+description = "A modern terminal-based Markdown editor"
+authors = ["vedant-asati03 <vedant.asati03@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+textual = "^0.47.1"
+markdown = "^3.5.2"
+pypandoc = "^1.13"
+pygments = "^2.17.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.1.1"
+pytest = "^8.0.0"
+pylint = "^3.0.3"
+mypy = "^1.8.0"
+
+[tool.poetry.scripts]
+tusk = "tusk.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
