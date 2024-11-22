@@ -1,6 +1,6 @@
 # Tusk
 
-A modern terminal-based Markdown editor with real-time preview and Git integration.
+A modern terminal-based Markdown editor with real-time preview.
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
