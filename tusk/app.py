@@ -224,7 +224,7 @@ class Tusk(App):
         content = input_box.text
         headers = re.findall(r'^(#{1,6})\s+(.+)$', content, re.MULTILINE)
         
-        toc = ["# Table of Contents\n"]
+        toc = ["## Table of Contents\n"]
         for hashes, title in headers:
             level = len(hashes) - 1
             link = title.lower().replace(' ', '-')

@@ -6,27 +6,20 @@ A modern terminal-based Markdown editor with real-time preview.
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-![](assets/tusk-logo.png)
+![tusk-logo](assets/tusk-logo.png)
 
-# Table of Contents
+## Table of Contents
 
-* [Tusk](#tusk)
-
-  * [Features](#features)
-
-  * [Installation](#installation)
-
-    * [Via pip](#via-pip)
-
-    * [From source](#from-source)
-
-  * [Usage](#usage)
-
-    * [Key Bindings](#key-bindings)
-
-  * [Contributing](#contributing)
-
-  * [License](#license)
+- [Tusk](#tusk)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+    - [Via pip](#via-pip)
+    - [From source](#from-source)
+  - [Usage](#usage)
+    - [Key Bindings](#key-bindings)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 
 
