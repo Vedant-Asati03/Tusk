@@ -13,7 +13,7 @@ import re
 
 from tusk.auto_save import AutoSave
 
-base_directory = Path("D:/")
+base_directory = Path("/home/vedant/code/")
 vim_bindings_path = base_directory / "textual-vim-extended"
 sys.path.append(str(vim_bindings_path))
 
@@ -149,8 +149,8 @@ class Tusk(App):
         super().__init__()
 
     def compose(self) -> ComposeResult:
-        input_box = TextAreaExtended.code_editor(
-            id="input-box", language="markdown", theme="dracula", soft_wrap=True
+        input_box = TextAreaExtended(
+            id="input-box", language="markdown", theme="dracula", soft_wrap=True, show_line_numbers=True
         )
         preview_box = Markdown(self.markdown, id="preview-box")
         yield Horizontal(input_box, preview_box)
