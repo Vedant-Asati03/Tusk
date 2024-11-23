@@ -54,33 +54,6 @@ class TextAreaExtended(AutoComplete):
     pass
 
 
-class ThemeCommand(Provider):
-    """Provider for theme switching commands"""
-
-    THEMES = [
-        "dracula",
-        "monokai",
-        "github-dark",
-        "one-dark",
-        "solarized-dark",
-        "solarized-light",
-        "nord",
-    ]
-
-    async def search(self, query: str) -> Hits:
-        matcher = self.matcher(query)
-        for theme in self.THEMES:
-            command = f"theme {theme}"
-            score = matcher.match(command)
-            if score > 0:
-                yield Hit(
-                    score,
-                    matcher.highlight(command),
-                    partial(self.app.change_theme, theme),
-                    help=f"Switch to {theme} theme",
-                )
-
-
 class ExportCommand(Provider):
     """Provider for export commands"""
 
@@ -101,7 +74,7 @@ class ExportCommand(Provider):
 
 
 class Tusk(App):
-    COMMANDS = App.COMMANDS | {ThemeCommand, ExportCommand}
+    COMMANDS = App.COMMANDS | {ExportCommand}
 
     BINDINGS = [
         Binding("ctrl+p", "command_palette", "Command palette"),
@@ -152,12 +125,18 @@ class Tusk(App):
         super().__init__()
 
     def compose(self) -> ComposeResult:
-        input_box = TextAreaExtended.code_editor(
-            id="input-box", language="markdown", theme="dracula", soft_wrap=True
+        input_box = TextAreaExtended(
+            id="input-box", language="markdown", soft_wrap=True
         )
         preview_box = Markdown(self.markdown, id="preview-box")
         yield Horizontal(input_box, preview_box)
-        initial_status = f"Words: 0 | Chars: 0 | Theme: dracula | Preview: ON | --autosave-enabled-- | {self.file_path or 'Untitled'}"
+        initial_status = (
+            f"--words 0-- "
+            f"--chars 0-- "
+            f"--theme {self.theme}-- "
+            f"--autosave-enabled-- "
+            f"{self.file_path or 'Untitled'}"
+        )
         yield Static(initial_status, id="status-bar")
 
     def on_mount(self) -> None:
@@ -188,7 +167,7 @@ class Tusk(App):
             f"--last-saved {last_save}-- "
             f"--words {words}-- "
             f"--chars {chars}-- "
-            f"--theme:inputbox {self.query_one('#input-box').theme}-- "
+            f"--theme {self.theme}-- "
             f"--autosave-enabled-- "
             f"{self.file_path or 'Untitled'}"
         )
@@ -253,11 +232,7 @@ class Tusk(App):
 
         input_box.insert("\n".join(toc) + "\n")
 
-    def change_theme(self, theme: str) -> None:
-        input_box = self.query_one("#input-box", TextArea)
-        input_box.theme = theme
-        self.on_text_area_changed(TextArea.Changed(input_box))
-
+    def export_document(self, format: str) -> None:
         if not self.file_path:
             self.notify("Please save the file first", severity="error")
             return
