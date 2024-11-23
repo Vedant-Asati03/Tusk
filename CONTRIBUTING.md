@@ -8,9 +8,9 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 ```
 |
 ├── .github
-|  └── ISSUE_TEMPLATE
-|     ├── bug_report.md
-|     ├── custom.md
+|     ├──ISSUE_TEMPLATE
+|     |      ├── bug_report.md
+|     |      └── custom.md
 |     └── feature_request.md
 ├── .gitignore
 ├── CHANGELOG.md
