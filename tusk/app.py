@@ -126,7 +126,7 @@ class Tusk(App):
 
     def compose(self) -> ComposeResult:
         input_box = TextAreaExtended(
-            id="input-box", language="markdown", soft_wrap=True
+            id="input-box", language="markdown", soft_wrap=True, show_line_numbers=True,
         )
         preview_box = Markdown(self.markdown, id="preview-box")
         yield Horizontal(input_box, preview_box)
