@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tusk"
+name = "tusk-editor"
 version = "0.1.1"
 description = "A modern terminal-based Markdown editor"
 authors = ["vedant-asati03 <vedant.asati03@gmail.com>"]
