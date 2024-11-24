@@ -44,35 +44,45 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 
 1. Fork the repository
 2. Clone your fork:
-
    ```bash
-   git clone https://github.com/vedant-asati03/tusk.git
+   git clone https://github.com/YOUR_USERNAME/tusk.git
    cd tusk
    ```
 
-3. Install Poetry if you haven't:
-
+3. Create and activate a virtual environment:
    ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-4. Install dependencies:
-
+4. Install core dependencies:
    ```bash
-   poetry install
+   pip install -r requirements.txt
    ```
 
-5. Activate virtual environment:
-
+5. Install development dependencies:
    ```bash
-   poetry shell
+   pip install -e ".[dev]"
    ```
 
-6. Run the application:
-
+6. Install system dependencies:
    ```bash
-   poetry run tusk
+   # On Ubuntu/Debian
+   sudo apt-get install pandoc
+
+   # On MacOS
+   brew install pandoc
+
+   # On Windows
+   choco install pandoc
    ```
+
+7. Start development server:
+   ```bash
+   python -m tusk
+   ```
+
+Note: Alternatively, you can use Poetry:
 
 **Again these are only guidelines not rules so just do everything to best of your knowledge.**
 
