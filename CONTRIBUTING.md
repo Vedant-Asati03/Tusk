@@ -24,8 +24,12 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 ├── tusk
 │     ├── __init__.py
 │     ├── app.py
-│     ├── auto_save.py
-│     └── cli.py   
+│     ├── cli.py
+│     └── utils
+│           ├── __init__.py
+│           ├── complete.py
+│           ├── save.py
+│           └── snippets.py
 └── assets
    └── tusk-logo.png
 ```
