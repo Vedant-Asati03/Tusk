@@ -11,47 +11,38 @@ import markdown
 import pypandoc
 import re
 
-from tusk.auto_save import AutoSave
-
-
-class AutoComplete(TextArea):
-    """A TextArea widget that automatically completes brackets and markdown syntax.
-
-    This class extends TextArea to provide auto-completion for common programming
-    and markdown syntax elements like brackets, quotes, and markdown formatting symbols.
-    """
-
-    def _on_key(self, event: events.Key) -> None:
-        """Handle key events for auto-completion of brackets and markdown syntax.
-
-        Args:
-            event (events.Key): The key event containing the character pressed.
-        """
-        bracket_quote_pair = {
-            "(": ")",
-            "{": "}",
-            "[": "]",
-            '"': '"',
-            "'": "'",
-            "<": ">",
-            "`": "`",
-            "*": "*",
-            "_": "_",
-            "__": "__",
-            "~": "~",
-            "```": "```",
-        }
-        if event.character in bracket_quote_pair.keys():
-            self.insert(event.character + bracket_quote_pair[event.character])
-            self.move_cursor_relative(columns=-1)
-            event.prevent_default()
-        elif event.character == "#":
-            self.insert("# ")
-            event.prevent_default()
+from utils import AutoSave, AutoSnippets, AutoComplete
 
 
 class TextAreaExtended(AutoComplete):
-    pass
+    """Extended text area with snippet support."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.snippets = AutoSnippets()
+        self.snippet_trigger = ""
+    
+    def _on_key(self, event: events.Key) -> None:
+        """Handle key events including snippet expansion."""
+        if event.key == "tab" and self.snippet_trigger:
+            expanded = self.snippets.expand_snippet(self.snippet_trigger)
+            if expanded:
+                cursor = self.selection.start
+                for _ in range(len(self.snippet_trigger)):
+                    self.action_delete_left()
+                self.insert(expanded)
+                if expanded in ["****", "[]()", "![]()"]:
+                    self.move_cursor_relative(columns=-2)
+                event.prevent_default()
+            self.snippet_trigger = ""
+            return
+
+        super()._on_key(event)
+        
+        if event.character and event.character.isalnum():
+            self.snippet_trigger += event.character
+        else:
+            self.snippet_trigger = ""
 
 
 class ExportCommand(Provider):
@@ -93,7 +84,7 @@ class Tusk(App):
     #input-box {
         width: 50%;
         height: 100%;
-        border: blank;
+        border: vkey;
         scrollbar-color: #C7C8CC;
         scrollbar-size-vertical: 1;
     }
@@ -199,7 +190,6 @@ class Tusk(App):
             preview.styles.width = "0%"
             input_box.styles.width = "100%"
 
-        # Trigger status bar update
         self.on_text_area_changed(TextArea.Changed(self.query_one("#input-box")))
 
     def action_expand_input_box(self) -> None:
@@ -257,8 +247,11 @@ class Tusk(App):
                 timeout=4,
             )
 
-
 if __name__ == "__main__":
+    import os
+    import sys
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
     app = Tusk(file_path=file_path)
     app.run()
