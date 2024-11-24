@@ -5,13 +5,14 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 ## Getting Started
 
 ### Code Structure
-```
-|
+
+```text
+.
 ├── .github
-|     ├──ISSUE_TEMPLATE
-|     |      ├── bug_report.md
-|     |      └── custom.md
-|     └── feature_request.md
+│     ├──ISSUE_TEMPLATE
+│     │      ├── bug_report.md
+│     │      └── custom.md
+│     └── feature_request.md
 ├── .gitignore
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
@@ -21,39 +22,50 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 ├── pyproject.toml
 ├── requirements.txt
 ├── tusk
-|     ├── __init__.py
-|     ├── app.py
-|     ├── auto_save.py
-|     └── cli.py   
+│     ├── __init__.py
+│     ├── app.py
+│     ├── auto_save.py
+│     └── cli.py   
 └── assets
-      └── tusk-logo.png
+   └── tusk-logo.png
 ```
 
 ### Prerequisites
+
 - Python 3.12 or higher
 - Textual
 - Pandoc (for export features)
 
 ### Setting Up Development Environment
+
 1. Fork the repository
 2. Clone your fork:
+
    ```bash
    git clone https://github.com/vedant-asati03/tusk.git
    cd tusk
    ```
+
 3. Install Poetry if you haven't:
+
    ```bash
    curl -sSL https://install.python-poetry.org | python3 -
    ```
+
 4. Install dependencies:
+
    ```bash
    poetry install
    ```
+
 5. Activate virtual environment:
+
    ```bash
    poetry shell
    ```
+
 6. Run the application:
+
    ```bash
    poetry run tusk
    ```
