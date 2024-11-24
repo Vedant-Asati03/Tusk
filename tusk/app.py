@@ -27,7 +27,6 @@ class TextAreaExtended(AutoComplete):
         if event.key == "tab" and self.snippet_trigger:
             expanded = self.snippets.expand_snippet(self.snippet_trigger)
             if expanded:
-                cursor = self.selection.start
                 for _ in range(len(self.snippet_trigger)):
                     self.action_delete_left()
                 self.insert(expanded)
