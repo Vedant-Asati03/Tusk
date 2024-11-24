@@ -44,28 +44,33 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 
 1. Fork the repository
 2. Clone your fork:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/tusk.git
    cd tusk
    ```
 
 3. Create and activate a virtual environment:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 4. Install core dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 5. Install development dependencies:
+
    ```bash
    pip install -e ".[dev]"
    ```
 
 6. Install system dependencies:
+
    ```bash
    # On Ubuntu/Debian
    sudo apt-get install pandoc
@@ -78,6 +83,7 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
    ```
 
 7. Start development server:
+
    ```bash
    python -m tusk
    ```
