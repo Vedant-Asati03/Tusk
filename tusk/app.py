@@ -11,17 +11,17 @@ import markdown
 import pypandoc
 import re
 
-from utils import AutoSave, AutoSnippets, AutoComplete
+from .utils import AutoSave, AutoSnippets, AutoComplete
 
 
 class TextAreaExtended(AutoComplete):
     """Extended text area with snippet support."""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.snippets = AutoSnippets()
         self.snippet_trigger = ""
-    
+
     def _on_key(self, event: events.Key) -> None:
         """Handle key events including snippet expansion."""
         if event.key == "tab" and self.snippet_trigger:
@@ -37,7 +37,7 @@ class TextAreaExtended(AutoComplete):
             return
 
         super()._on_key(event)
-        
+
         if event.character and event.character.isalnum():
             self.snippet_trigger += event.character
         else:
@@ -116,7 +116,10 @@ class Tusk(App):
 
     def compose(self) -> ComposeResult:
         input_box = TextAreaExtended(
-            id="input-box", language="markdown", soft_wrap=True, show_line_numbers=True,
+            id="input-box",
+            language="markdown",
+            soft_wrap=True,
+            show_line_numbers=True,
         )
         preview_box = Markdown(self.markdown, id="preview-box")
         yield Horizontal(input_box, preview_box)
@@ -246,9 +249,11 @@ class Tusk(App):
                 timeout=4,
             )
 
+
 if __name__ == "__main__":
     import os
     import sys
+
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
