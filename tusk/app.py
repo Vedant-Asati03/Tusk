@@ -17,7 +17,7 @@ base_directory = Path("/home/vedant/code/")
 vim_bindings_path = base_directory / "textual-vim-extended"
 sys.path.append(str(vim_bindings_path))
 
-from vim_bindings import HandleVimBindings
+from src.editor import VimEditor
 
 
 class AutoComplete(TextArea):
@@ -56,7 +56,7 @@ class AutoComplete(TextArea):
             event.prevent_default()
 
 
-class TextAreaExtended(AutoComplete, HandleVimBindings):
+class TextAreaExtended(AutoComplete, VimEditor):
     pass
 
 
