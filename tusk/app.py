@@ -11,7 +11,7 @@ import markdown
 import pypandoc
 import re
 
-from .utils import AutoSave, AutoSnippets, AutoComplete
+from .utils import AutoSave, AutoSnippets, AutoComplete, CacheManager
 
 
 class TextAreaExtended(AutoComplete):
@@ -107,11 +107,25 @@ class Tusk(App):
     SAVE_INTERVAL = 0.8
 
     def __init__(self, markdown: str = "", file_path: str | None = None) -> None:
-        self.markdown = markdown
+        # Initialize cache manager with self reference
+        super().__init__()  # Initialize App first so we can use notify
+        self.cache_manager = CacheManager(self)
         self.file_path = Path(file_path) if file_path else None
-        self.show_preview = True
-        self.input_width = 50
+
+        # Load settings for this specific file
+        self.settings = self.cache_manager.load_settings(
+            str(self.file_path) if self.file_path else None
+        )
+
+        self.markdown = markdown
+        self.show_preview = self.settings["show_preview"]
+        self.input_width = self.settings["input_width"]
         self.auto_save = AutoSave(self.file_path)
+
+        # Add current file to recent files if provided
+        if file_path:
+            self.cache_manager.add_recent_file(str(file_path))
+
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -248,6 +262,21 @@ class Tusk(App):
                 severity="error",
                 timeout=4,
             )
+
+    def on_unmount(self) -> None:
+        """Save settings when the application closes."""
+        if self.file_path:
+            try:
+                input_box = self.query_one("#input-box", TextArea)
+                settings = {
+                    "theme": self.theme,
+                    "input_width": self.input_width,
+                    "show_preview": self.show_preview,
+                    "cursor_location": input_box.cursor_location,
+                }
+                self.cache_manager.save_settings(str(self.file_path), settings)
+            except Exception as e:
+                print(f"Error saving settings on exit: {e}")
 
 
 if __name__ == "__main__":
