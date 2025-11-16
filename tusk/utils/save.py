@@ -1,6 +1,6 @@
 import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
 class AutoSave:
@@ -22,17 +22,23 @@ class AutoSave:
         self.last_save_time = None
         self.logger.info("AutoSave initialized")
 
-    def autosave_content(self, content: str) -> None:
+    def autosave_content(self, content: str) -> tuple[bool, str | None]:
         """Save the current editor content."""
         if not self.file_path:
-            return
+            warning = "No file path configured; skipping autosave"
+            self.logger.warning(warning)
+            return False, warning
 
         try:
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
             self.file_path.write_text(content, encoding="utf-8")
             self.last_save_time = datetime.now()
             self.logger.info(f"Autosaved content to {self.file_path}")
+            return True, None
         except Exception as e:
-            self.logger.error(f"Failed to autosave: {str(e)}")
+            message = f"Failed to autosave: {str(e)}"
+            self.logger.error(message)
+            return False, message
 
     def load_last_save(self) -> str:
         """Retrieve the content from the file."""
@@ -48,3 +54,6 @@ class AutoSave:
         if self.last_save_time:
             return self.last_save_time.strftime("%H:%M:%S")
         return "Never"
+
+    def set_file_path(self, file_path: Path) -> None:
+        self.file_path = file_path
