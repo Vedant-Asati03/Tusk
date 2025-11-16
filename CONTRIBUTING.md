@@ -4,41 +4,10 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
 
 ## Getting Started
 
-### Code Structure
-
-```text
-.
-├── .github
-│     ├──ISSUE_TEMPLATE
-│     │      ├── bug_report.md
-│     │      └── custom.md
-│     └── feature_request.md
-├── .gitignore
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-├── poetry.lock
-├── pyproject.toml
-├── requirements.txt
-├── tusk
-│     ├── __init__.py
-│     ├── app.py
-│     ├── cli.py
-│     └── utils
-│           ├── __init__.py
-│           ├── complete.py
-│           ├── save.py
-│           └── snippets.py
-└── assets
-   └── tusk-logo.png
-```
-
 ### Prerequisites
 
 - Python 3.12 or higher
 - Textual
-- Pandoc (for export features)
 
 ### Setting Up Development Environment
 
@@ -69,20 +38,7 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
    pip install -e ".[dev]"
    ```
 
-6. Install system dependencies:
-
-   ```bash
-   # On Ubuntu/Debian
-   sudo apt-get install pandoc
-
-   # On MacOS
-   brew install pandoc
-
-   # On Windows
-   choco install pandoc
-   ```
-
-7. Start development server:
+6. Start development server:
 
    ```bash
    python -m tusk
