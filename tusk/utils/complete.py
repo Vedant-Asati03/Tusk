@@ -1,6 +1,7 @@
+import re
+
 from textual import events
 from textual.widgets import TextArea
-import re
 
 
 class AutoComplete(TextArea):
@@ -16,7 +17,6 @@ class AutoComplete(TextArea):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.smart_quotes_enabled = True
         self.auto_indent_enabled = True
 
     def _get_current_line(self) -> str:
@@ -46,44 +46,11 @@ class AutoComplete(TextArea):
         return code_block_count % 2 == 1
 
     def _should_convert_quotes(self, quote_char: str) -> bool:
-        """Check if quotes should be converted to smart quotes."""
-        if not self.smart_quotes_enabled:
-            return False
-        if self._is_in_code_block():
-            return False
-
-        # Don't convert if we're inside an existing quote pair
-        cursor_row, cursor_col = self.cursor_location
-        current_line = self._get_current_line()
-
-        # Count quotes before cursor
-        before_cursor = current_line[:cursor_col]
-        quote_count = before_cursor.count(quote_char)
-
-        return quote_count % 2 == 0
+        """Smart quotes feature removed for minimalism."""
+        return False
 
     def _handle_smart_quotes(self, event: events.Key) -> bool:
-        """Handle smart quote conversion."""
-        quote_map = {'"': ('"', '"'), "'": (""", """)}
-
-        if event.character in quote_map and self._should_convert_quotes(
-            event.character
-        ):
-            cursor_row, cursor_col = self.cursor_location
-            current_line = self._get_current_line()
-            before_cursor = current_line[:cursor_col]
-
-            # Determine if this is opening or closing quote
-            quote_count = before_cursor.count(event.character)
-            is_opening = quote_count % 2 == 0
-
-            if is_opening:
-                self.insert(quote_map[event.character][0])
-            else:
-                self.insert(quote_map[event.character][1])
-
-            event.prevent_default()
-            return True
+        """Smart quotes feature removed for minimalism."""
         return False
 
     def _handle_auto_indent(self, event: events.Key) -> bool:
@@ -229,10 +196,6 @@ class AutoComplete(TextArea):
             self.text = "\n".join(lines)
             # Move cursor down with the line
             self.cursor_location = (cursor_row + 1, cursor_col)
-
-    def toggle_smart_quotes(self) -> None:
-        """Toggle smart quotes feature."""
-        self.smart_quotes_enabled = not self.smart_quotes_enabled
 
     def toggle_auto_indent(self) -> None:
         """Toggle auto-indent feature."""
