@@ -1,16 +1,9 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 
 from tusk.app import Tusk
-from tusk.utils.snippets import AutoSnippets
-
-
-def list_snippets():
-    snippets = AutoSnippets()
-    print("Available Snippets:")
-    for key, info in {**snippets.builtin_snippets, **snippets.custom_snippets}.items():
-        print(f"{key}: {info.description}")
 
 
 def main():
@@ -23,7 +16,20 @@ def main():
     )
     parser.add_argument("--new", action="store_true", help="Create a new file")
     parser.add_argument(
-        "--snippets", action="store_true", help="List available snippets"
+        "--log-stream",
+        action="store_true",
+        help="Enable TCP log streaming for debugging",
+    )
+    parser.add_argument(
+        "--log-host",
+        default=os.environ.get("TUSK_LOG_HOST", "127.0.0.1"),
+        help="Host/interface for the log stream (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--log-port",
+        type=int,
+        default=int(os.environ.get("TUSK_LOG_PORT", "8765")),
+        help="Port for the log stream (use 0 for ephemeral)",
     )
 
     args = parser.parse_args()
@@ -31,10 +37,6 @@ def main():
     if args.new and not args.file:
         print("Error: --new requires a filename")
         sys.exit(1)
-
-    if args.snippets:
-        list_snippets()
-        sys.exit(0)
 
     file_path: Path | None = None
     if args.file:
@@ -54,7 +56,13 @@ def main():
                 print(f"File {file_path} does not exist. Use --new to create it.")
                 sys.exit(1)
 
-    app = Tusk(file_path=file_path)
+    log_port = args.log_port if args.log_stream else None
+    app = Tusk(
+        file_path=file_path,
+        log_stream=args.log_stream,
+        log_host=args.log_host,
+        log_port=log_port,
+    )
     app.run()
 
 
