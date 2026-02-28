@@ -3,7 +3,7 @@
 A modern terminal-based Markdown editor with real-time preview.
 
 ![Version](https://img.shields.io/badge/version-0.1.1-blue)
-![Python](https://img.shields.io/badge/python-3.10+-blue)
+![Python](https://img.shields.io/badge/python-3.13+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ![tusk-logo](assets/tusk-logo.png)
@@ -17,8 +17,7 @@ A modern terminal-based Markdown editor with real-time preview.
     - [From source](#from-source)
   - [Usage](#usage)
     - [Key Bindings](#key-bindings)
-    - [Auto-Completion](#auto-completion)
-    - [Snippets](#snippets)
+    - [Vim Engine Controls](#vim-engine-controls)
     - [Configuration](#configuration)
   - [Contributing](#contributing)
   - [License](#license)
@@ -49,53 +48,52 @@ tusk filename.md
 
 ### Key Bindings
 
-#### Basic Operations
+Core Tusk bindings (everything else comes from Vim):
 
 - `Ctrl+S`: Save file
 - `Ctrl+Shift+S`: Save As / rename drafts
 - `Ctrl+P`: Open command palette
+- `Ctrl+!`: Toggle editor pane visibility
 - `Ctrl+@`: Toggle preview pane
-- `Ctrl+L`: Expand input-box
-- `Ctrl+Q`: Shrink input-box
-- `Ctrl+B`: Insert Table of Contents
-- `Tab`: Expand snippet
+- `Ctrl+L`: Expand editor pane
+- `Ctrl+Q`: Shrink editor pane
 
-#### Line Operations
+### Vim Engine Controls
 
-- `Ctrl+D`: Duplicate current line
-- `Alt+↑`: Move line up
-- `Alt+↓`: Move line down
+Tusk now embeds the shared `vim_engine` Textual adapter. Once the app loads, editing works exactly like Vim:
 
-#### Editor Features
+- Press `i`, `a`, `o`, etc. to enter insert mode
+- Press `Esc` to return to normal mode
+- Use `:` commands (`:w`, `:q`, `:wq`, …) or any normal/visual operations supported by `vim_engine`
+- Multi-key bindings (e.g. `dd`, `yy`, `/search`) behave just like the demo in `vim_engine/adapters/textual`
 
-- `Ctrl+Alt+I`: Toggle auto-indent
+Refer to the [vim_engine project](https://github.com/Vedant-Asati03/vim-engine) for the full list of supported commands and keymaps. If you are developing locally, ensure the engine is installed into Tusk’s environment:
 
-### Auto-Completion
+```bash
+cd /home/vedant/code/tusk
+poetry run pip install -e ../textual-vim-extended
+```
 
-Automatic completion for:
-
-- **Smart Brackets**: (), [], {}, <> with context awareness
-- **Markdown Formatting**: **, __, ~~, ``` with improved pairing
-- **Headers**: # automatically adds space
-- **Auto-indent**: Maintains indentation for lists, code blocks, and quotes
-
-### Snippets
-
-Built-in snippets:
-
-- Headers: `h1`, `h2`, `h3`
-- Formatting: `bold`, `italic`, `strike`, `code`
-- Lists: `ul`, `ol`
-- Links: `link`, `img`
-- Others: `quote`, `hr`, `todo`, `done`
-
-Custom snippets can be added via `~/.config/tusk/snippets.json`
+This keeps Tusk and the vim engine in sync while developing both side by side.
 
 ### Configuration
 
 - Snippets: `~/.config/tusk/snippets.json`
 - Logs: `~/.tusk/logs/tusk.log`
 - Auto-save: Enabled by default
+- Live log stream (optional): `tusk --log-stream [--log-host HOST --log-port PORT]`
+
+#### Live Log Streaming (experimental)
+
+Tusk can expose its internal telemetry over a lightweight TCP stream for debugging Textual interactions in real time. Enable it via the CLI:
+
+```bash
+tusk notes.md --log-stream --log-host 0.0.0.0 --log-port 8765
+```
+
+Environment variables `TUSK_LOG_HOST` and `TUSK_LOG_PORT` provide defaults for the host/port. When no port is supplied (or `--log-port 0`), the OS picks an ephemeral port which is reported in Tusk's notification area.
+
+Connect any TCP client (e.g. `nc 127.0.0.1 8765`) to follow structured log lines that mirror keystrokes, autosave results, and other editor events. The stream requires `vim_engine` (now a core dependency) so it shares the same telemetry module as the Textual demo.
 
 ## Contributing
 
