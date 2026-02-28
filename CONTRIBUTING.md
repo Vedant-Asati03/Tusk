@@ -19,26 +19,19 @@ Thank you for your interest in contributing to Tusk! Let's first walk through th
    cd tusk
    ```
 
-3. Create and activate a virtual environment:
+3. Install uv if not already installed:
 
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install uv
    ```
 
-4. Install core dependencies:
+4. set up the environment:
 
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
-5. Install development dependencies:
-
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-6. Start development server:
+5. Start development server:
 
    ```bash
    python -m tusk
