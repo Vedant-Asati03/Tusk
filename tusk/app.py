@@ -1,50 +1,23 @@
-import re
+from __future__ import annotations
+
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Dict
 
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Markdown, Static, TextArea
+from textual.widgets import Button, Input, Markdown, Static
+from vim_engine.adapters.textual.widget import VimEditor
+from vim_engine.logging import NetworkLogStreamer
 
-from tusk.utils import AutoComplete, AutoSave, AutoSnippets, CacheManager
-
+from tusk.utils import AutoSave, CacheManager
 
 DRAFT_DIR = Path.home() / ".tusk" / "drafts"
-
-
-class TextAreaExtended(AutoComplete):
-    """Extended text area with snippet support."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.snippets = AutoSnippets()
-        self.snippet_trigger = ""
-
-    def _on_key(self, event: events.Key) -> None:
-        """Handle key events including snippet expansion."""
-        if event.key == "tab" and self.snippet_trigger:
-            expanded = self.snippets.expand_snippet(self.snippet_trigger)
-            if expanded:
-                for _ in range(len(self.snippet_trigger)):
-                    self.action_delete_left()
-                self.insert(expanded)
-                if expanded in ["****", "[]()", "![]()"]:
-                    self.move_cursor_relative(columns=-2)
-                event.prevent_default()
-            self.snippet_trigger = ""
-            return
-
-        super()._on_key(event)
-
-        if event.character and event.character.isalnum():
-            self.snippet_trigger += event.character
-        else:
-            self.snippet_trigger = ""
 
 
 class SaveAsScreen(ModalScreen[Path | None]):
@@ -78,7 +51,9 @@ class SaveAsScreen(ModalScreen[Path | None]):
     def compose(self) -> ComposeResult:
         yield Vertical(
             Static("Save current document as:", id="save-as-title"),
-            Input(value=self.initial, placeholder="/path/to/file.md", id="save-as-input"),
+            Input(
+                value=self.initial, placeholder="/path/to/file.md", id="save-as-input"
+            ),
             Horizontal(
                 Button("Cancel", id="cancel"),
                 Button("Save", id="save", variant="primary"),
@@ -118,13 +93,6 @@ class Tusk(App):
         Binding("ctrl+@", "toggle_preview", "Toggle Preview"),
         Binding("ctrl+l", "expand_input_box", "Widen input"),
         Binding("ctrl+q", "shrink_input_box", "Shrink input"),
-        Binding("ctrl+b", "insert_toc", "Insert TOC"),
-        # Line operations
-        Binding("ctrl+d", "duplicate_line", "Duplicate line"),
-        Binding("alt+up", "move_line_up", "Move line up"),
-        Binding("alt+down", "move_line_down", "Move line down"),
-        # Editor features
-        Binding("ctrl+alt+i", "toggle_auto_indent", "Toggle auto-indent"),
     ]
 
     CSS = """
@@ -158,23 +126,48 @@ class Tusk(App):
 
     SAVE_INTERVAL = 0.8
 
-    def __init__(self, file_path: Path | None = None, markdown: str = "") -> None:
+    def __init__(
+        self,
+        file_path: Path | None = None,
+        markdown: str = "",
+        *,
+        log_stream: bool = False,
+        log_host: str = "127.0.0.1",
+        log_port: int | None = None,
+    ) -> None:
         self._draft_notice: str | None = None
-        self.cache_manager = CacheManager(self)
         self.file_path = self._prepare_file_path(file_path)
-
-        # Load settings for this specific file
-        self.settings = self.cache_manager.load_settings(str(self.file_path))
-
         self.markdown = markdown
-        self.show_preview = self.settings["show_preview"]
-        self.input_width = self.settings["input_width"]
+        self.show_preview = True
+        self.input_width = 50
         self._last_save_state = "never"
         self._last_save_error: str | None = None
+        self._editor_text = markdown
+        self._last_preview_text: str | None = None
+        self._last_word_count = 0
+        self._last_char_count = 0
+        self._vim_status_text = ""
+        self._vim_command_text = ""
+        self._vim_editor: VimEditor | None = None
+        self._preview_widget: Markdown | None = None
+        self._status_widget: Static | None = None
+        self._suppress_vim_callback = False
+
+        self._log_stream_requested = log_stream
+        self._log_stream_host = log_host
+        self._log_stream_port = log_port
+        self._log_streamer: NetworkLogStreamer | None = None
 
         self.auto_save = AutoSave(self.file_path)
 
         super().__init__()
+
+        self.cache_manager = CacheManager(self)
+
+        # Load settings for this specific file
+        self.settings = self.cache_manager.load_settings(str(self.file_path))
+        self.show_preview = self.settings["show_preview"]
+        self.input_width = self.settings["input_width"]
 
     def _prepare_file_path(self, file_path: Path | None) -> Path:
         if file_path and file_path != Path():
@@ -194,57 +187,66 @@ class Tusk(App):
         return draft_path
 
     def compose(self) -> ComposeResult:
-        input_box = TextAreaExtended(
+        self._vim_editor = VimEditor(
+            initial_text=self.markdown,
             id="input-box",
-            language="markdown",
-            soft_wrap=True,
-            show_line_numbers=True,
+            log_callback=self._log_line,
+            on_text_change=self._handle_vim_text_change,
+            on_status_change=self._handle_vim_status,
+            on_command_change=self._handle_vim_command,
+            on_event=self._handle_vim_event,
         )
-        preview_box = Markdown(self.markdown, id="preview-box")
-        yield Horizontal(input_box, preview_box)
+        self._preview_widget = Markdown(self.markdown, id="preview-box")
+        yield Horizontal(self._vim_editor, self._preview_widget)
         initial_status = self._build_status(words=0, chars=0)
-        yield Static(initial_status, id="status-bar")
+        self._status_widget = Static(initial_status, id="status-bar")
+        yield self._status_widget
 
-    def on_mount(self) -> None:
+    async def on_key(self, event: events.Key) -> None:
+        target = getattr(event, "target", None)
+        target_id = getattr(target, "id", None)
+        self._log_state(
+            "key ->",
+            key=event.key,
+            text=getattr(event, "character", None),
+            target=target_id,
+            ctrl=getattr(event, "ctrl", False),
+            alt=getattr(event, "alt", False),
+            shift=getattr(event, "shift", False),
+        )
+        # Base App has no on_key hook; logging only so skip super call.
+
+    async def on_mount(self) -> None:
         """Initialize the application after mounting."""
+        initial_content = self.markdown
         if self.file_path and self.file_path.is_file():
-            input_box = self.query_one("#input-box", TextArea)
             try:
-                # Load file content
-                content = self.auto_save.load_last_save()
-                input_box.text = content
+                initial_content = self.auto_save.load_last_save()
+            except Exception as exc:
+                initial_content = ""
+                self.notify(f"Error loading file: {exc}", severity="error")
 
-            except Exception as e:
-                input_box.text = f"Error loading file: {str(e)}"
+        self._editor_text = initial_content
+        if self._preview_widget:
+            self._preview_widget.update(initial_content)
+        if self._vim_editor:
+            buffer_name = str(self.file_path) if self.file_path else "draft"
+            self._vim_editor.set_buffer_name(buffer_name)
+            self._suppress_vim_callback = True
+            self._vim_editor.load_text(initial_content)
+            self._suppress_vim_callback = False
+
+        self._on_editor_text_changed(initial_content, initial_load=True)
 
         if self._draft_notice:
             self.notify(self._draft_notice, severity="information")
 
-    def on_text_area_changed(self, event: TextArea.Changed) -> None:
-        """Update the preview pane when text content changes.
-
-        Args:
-            event (TextArea.Changed): Event containing the updated text content.
-        """
-        input_content = event.control.text
-        preview_box = self.query_one("#preview-box", Markdown)
-        preview_box.update(input_content)
-        previous_state = self._last_save_state
-        success, error = self.auto_save.autosave_content(input_content)
-        self._record_save_result(success, error)
-        if not success and error and previous_state != "error":
-            self.notify(error, severity="error")
-        elif success and previous_state == "error":
-            self.notify("Autosave restored", severity="information")
-
-        words = len(input_content.split())
-        chars = len(input_content)
-        self._update_status_bar(words, chars)
+        if self._log_stream_requested:
+            await self._start_log_stream()
 
     def _do_save(self) -> None:
         """Save content directly to the opened file."""
-        input_box = self.query_one("#input-box", TextArea)
-        success, error = self.auto_save.autosave_content(input_box.text)
+        success, error = self.auto_save.autosave_content(self._editor_text)
         self._record_save_result(success, error)
         self._refresh_status_from_input()
         if success:
@@ -270,8 +272,7 @@ class Tusk(App):
         if not target.is_absolute():
             target = Path.cwd() / target
 
-        input_box = self.query_one("#input-box", TextArea)
-        content = input_box.text
+        content = self._editor_text
         previous_path = self.file_path
 
         self.file_path = target
@@ -306,8 +307,10 @@ class Tusk(App):
         When toggled off, the preview expands to full width.
         When toggled on, returns to split view with previous width ratio.
         """
-        input_box = self.query_one("#input-box", TextArea)
-        preview = self.query_one("#preview-box", Markdown)
+        input_box = self._vim_editor
+        preview = self._preview_widget
+        if not input_box or not preview:
+            return
 
         if input_box.styles.width == "0%":
             input_box.styles.width = f"{self.input_width}%"
@@ -324,8 +327,10 @@ class Tusk(App):
         When toggled off, the editor expands to full width.
         When toggled on, returns to split view with previous width ratio.
         """
-        preview = self.query_one("#preview-box", Markdown)
-        input_box = self.query_one("#input-box", TextArea)
+        preview = self._preview_widget
+        input_box = self._vim_editor
+        if not preview or not input_box:
+            return
 
         self.show_preview = not self.show_preview
         if self.show_preview:
@@ -340,58 +345,124 @@ class Tusk(App):
     def action_expand_input_box(self) -> None:
         if self.input_width < 100:
             self.input_width += 1
-            input_box = self.query_one("#input-box", TextArea)
-            preview_box = self.query_one("#preview-box", Markdown)
+            input_box = self._vim_editor
+            preview_box = self._preview_widget
+            if not input_box or not preview_box:
+                return
             input_box.styles.width = f"{self.input_width}%"
             preview_box.styles.width = f"{100 - self.input_width}%"
 
     def action_shrink_input_box(self) -> None:
         if self.input_width > 0:
             self.input_width -= 1
-            input_box = self.query_one("#input-box", TextArea)
-            preview_box = self.query_one("#preview-box", Markdown)
+            input_box = self._vim_editor
+            preview_box = self._preview_widget
+            if not input_box or not preview_box:
+                return
             input_box.styles.width = f"{self.input_width}%"
             preview_box.styles.width = f"{100 - self.input_width}%"
 
-    def action_insert_toc(self) -> None:
-        """Generate and insert table of contents."""
-        input_box = self.query_one("#input-box", TextArea)
-        content = input_box.text
-        headers = re.findall(r"^(#{1,6})\s+(.+)$", content, re.MULTILINE)
+    async def _start_log_stream(self) -> None:
+        if not NetworkLogStreamer:
+            return
+        port = self._log_stream_port if self._log_stream_port is not None else 8765
+        streamer = NetworkLogStreamer(self._log_stream_host, port)
+        await streamer.start()
+        self._log_streamer = streamer
+        bound = streamer.port
+        self._log_line(f"log stream ready on {self._log_stream_host}:{bound}")
 
-        toc = ["## Table of Contents\n"]
-        for hashes, title in headers:
-            level = len(hashes) - 1
-            link = title.lower().replace(" ", "-")
-            toc.append(f"{'  ' * level}* [{title}](#{link})\n")
+    async def _stop_log_stream(self) -> None:
+        if self._log_streamer:
+            await self._log_streamer.stop()
+            self._log_streamer = None
 
-        input_box.insert("\n".join(toc) + "\n")
+    def _handle_vim_text_change(self, text: str) -> None:
+        self._editor_text = text
+        if self._suppress_vim_callback:
+            return
+        self._on_editor_text_changed(text)
 
-    def action_duplicate_line(self) -> None:
-        """Duplicate the current line."""
-        input_box = self.query_one("#input-box", TextAreaExtended)
-        input_box.action_duplicate_line()
+    def _handle_vim_status(self, status: str) -> None:
+        self._vim_status_text = status
+        self._update_status_bar(self._last_word_count, self._last_char_count)
 
-    def action_move_line_up(self) -> None:
-        """Move current line up."""
-        input_box = self.query_one("#input-box", TextAreaExtended)
-        input_box.action_move_line_up()
+    def _handle_vim_command(self, command: str) -> None:
+        self._vim_command_text = command
+        self._update_status_bar(self._last_word_count, self._last_char_count)
 
-    def action_move_line_down(self) -> None:
-        """Move current line down."""
-        input_box = self.query_one("#input-box", TextAreaExtended)
-        input_box.action_move_line_down()
+    def _handle_vim_event(self, name: str, payload: object | None) -> None:
+        if name.startswith("command"):
+            detail = f"{name}:{payload}" if payload is not None else name
+            self._vim_status_text = detail
+            self._update_status_bar(self._last_word_count, self._last_char_count)
 
-    def action_toggle_auto_indent(self) -> None:
-        """Toggle auto-indent feature."""
-        input_box = self.query_one("#input-box", TextAreaExtended)
-        input_box.toggle_auto_indent()
-        status = "enabled" if input_box.auto_indent_enabled else "disabled"
-        self.notify(f"Auto-indent {status}")
+    def _on_editor_text_changed(self, text: str, *, initial_load: bool = False) -> None:
+        if self._last_preview_text == text and not initial_load:
+            return
+        self._last_preview_text = text
+        if self._preview_widget:
+            self._preview_widget.update(text)
+        previous_state = self._last_save_state
+        if initial_load:
+            success, error = True, None
+        else:
+            success, error = self.auto_save.autosave_content(text)
+        self._record_save_result(success, error)
+        if not initial_load:
+            if not success and error and previous_state != "error":
+                self.notify(error, severity="error")
+            elif success and previous_state == "error":
+                self.notify("Autosave restored", severity="information")
+        words = len(text.split())
+        chars = len(text)
+        self._last_word_count = words
+        self._last_char_count = chars
+        self._update_status_bar(words, chars)
+        self._log_state("text", words=words, chars=chars)
+
+    def _log_line(self, message: str) -> None:
+        if self._log_streamer:
+            self._log_streamer.log(message)
+
+    def _state_snapshot(self) -> Dict[str, object]:
+        data: Dict[str, object] = {
+            "file": str(self.file_path) if self.file_path else "<draft>",
+            "save_state": self._format_save_state(),
+            "preview": self.show_preview,
+            "theme": self.theme,
+        }
+        text = self._editor_text or ""
+        data.update(
+            {
+                "words": len(text.split()),
+                "chars": len(text),
+            }
+        )
+        if (
+            self._vim_editor
+            and self._vim_editor.manager
+            and self._vim_editor.manager.active_mode
+        ):
+            data["vim_mode"] = self._vim_editor.manager.active_mode.name
+        if self._vim_command_text:
+            data["command"] = self._vim_command_text
+        return data
+
+    def _log_state(self, prefix: str, **fields: object) -> None:
+        if not self._log_streamer:
+            return
+        snapshot = self._state_snapshot()
+        snapshot.update({k: v for k, v in fields.items() if v is not None})
+        parts = [prefix]
+        for key, value in snapshot.items():
+            parts.append(f"{key}={value!r}")
+        self._log_streamer.log(" ".join(parts))
 
     def _refresh_preview(self) -> None:
-        input_box = self.query_one("#input-box", TextArea)
-        self.on_text_area_changed(TextArea.Changed(input_box))
+        if self._preview_widget:
+            self._preview_widget.update(self._editor_text)
+        self._update_status_bar(self._last_word_count, self._last_char_count)
 
     def _build_status(self, words: int, chars: int) -> str:
         last_save = self.auto_save.get_last_save_time()
@@ -405,17 +476,27 @@ class Tusk(App):
             f"--autosave-enabled-- "
             f"{self.file_path}"
         )
+        if (
+            self._vim_editor
+            and self._vim_editor.manager
+            and self._vim_editor.manager.active_mode
+        ):
+            status += f" --mode {self._vim_editor.manager.active_mode.name}--"
+        if self._vim_status_text:
+            status += f" --vim {self._vim_status_text}--"
+        if self._vim_command_text:
+            status += f" :{self._vim_command_text}"
         return status
 
     def _update_status_bar(self, words: int, chars: int) -> None:
-        self.query_one("#status-bar", Static).update(
-            self._build_status(words, chars)
-        )
+        if self._status_widget:
+            self._status_widget.update(self._build_status(words, chars))
 
     def _refresh_status_from_input(self) -> None:
-        input_box = self.query_one("#input-box", TextArea)
-        text = input_box.text
-        self._update_status_bar(len(text.split()), len(text))
+        text = self._editor_text
+        self._last_word_count = len(text.split())
+        self._last_char_count = len(text)
+        self._update_status_bar(self._last_word_count, self._last_char_count)
 
     def _record_save_result(self, success: bool, error: str | None) -> None:
         if success:
@@ -424,6 +505,7 @@ class Tusk(App):
         else:
             self._last_save_state = "error"
             self._last_save_error = error
+        self._log_state("save", success=success, error=error)
 
     def _format_save_state(self) -> str:
         if self._last_save_state == "ok":
@@ -438,8 +520,8 @@ class Tusk(App):
         except ValueError:
             return False
 
-    def on_unmount(self) -> None:
-        """Save settings when the application closes."""
+    async def on_unmount(self) -> None:
+        """Save settings and stop background helpers when the application closes."""
         if self.file_path:
             try:
                 # Save basic settings only
@@ -453,6 +535,8 @@ class Tusk(App):
             except Exception as e:
                 print(f"Error saving settings on exit: {e}")
 
+        await self._stop_log_stream()
+
 
 if __name__ == "__main__":
     import os
@@ -462,5 +546,15 @@ if __name__ == "__main__":
 
     raw_path = sys.argv[1] if len(sys.argv) > 1 else None
     path_arg = Path(raw_path) if raw_path else None
-    app = Tusk(file_path=path_arg)
+    log_env = os.environ.get("TUSK_LOG_STREAM", "0").lower()
+    log_stream_enabled = log_env not in {"0", "false", ""}
+    log_host = os.environ.get("TUSK_LOG_HOST", "127.0.0.1")
+    port_env = os.environ.get("TUSK_LOG_PORT")
+    log_port = int(port_env) if port_env else None
+    app = Tusk(
+        file_path=path_arg,
+        log_stream=log_stream_enabled,
+        log_host=log_host,
+        log_port=log_port,
+    )
     app.run()
